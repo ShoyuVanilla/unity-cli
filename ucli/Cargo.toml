@@ -1,0 +1,11 @@
+[package]
+name = "ucli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.3", features = ["derive"] }
+common = { path = "../common" }
+mdns-sd = { git = "https://github.com/ShoyuVanilla/mdns-sd.git", branch = "main" }
+tokio = { version = "1.28", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
