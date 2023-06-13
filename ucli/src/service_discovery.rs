@@ -10,19 +10,15 @@ use mdns_sd::{IPMulticastTTLOption, ServiceDaemon, ServiceEvent, ServiceInfo};
 use crate::cli_args::DiscoveryArgs;
 
 pub struct Service {
-    pub address: SocketAddrV4,
-    pub hostname: String,
-    pub path: PathBuf,
-    pub project: String,
-    pub unity_version: String,
-    pub session_name: String,
+    address: SocketAddrV4,
+    hostname: String,
+    path: PathBuf,
+    project: String,
+    unity_version: String,
+    session_name: String,
 }
 
-pub enum ServiceDiscoveryError {
-
-}
-
-pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Result<Service, String> {
+pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<Service> {
     let daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).unwrap();
     let receiver = daemon.browse(MDNS_SERVICE_NAME).unwrap();
     let mut services = Vec::new();
@@ -32,7 +28,7 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Result<Service
         if let ServiceEvent::ServiceResolved(info) = event {
             match filter_service(&info, &args, &workdir) {
                 Some((true, service)) => {
-                    return Ok(service);
+                    return vec![service];
                 }
                 Some((false, service)) => {
                     services.push(service);
@@ -42,17 +38,7 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Result<Service
         }
     }
 
-    match services.len() {
-        0 => {
-            todo!()
-        }
-        1 => {
-            Ok(services.remove(0))
-        }
-        _ => {
-            todo!()
-        }
-    }
+    services
 }
 
 fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs, workdir: &Path) -> Option<(bool, Service)> {

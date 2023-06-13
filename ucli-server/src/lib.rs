@@ -301,7 +301,6 @@ async fn handle_write<F>(
     loop {
         match cmd_rx.recv().await {
             Some(msg) => {
-                dbg!(&msg);
                 if let Err(e) = write.send(msg).await {
                     error!(error = %e, "failed to send server message!");
                     break;
@@ -335,7 +334,6 @@ pub unsafe extern "C" fn on_unity_console_log(
     log: *const c_char,
     stack_trace: *const c_char,
 ) -> bool {
-    dbg!("Foo");
     if let Some(instance) = INSTANCE.blocking_read().as_ref() {
         let log = c_char_to_str(log);
         let stack_trace = c_char_to_str(stack_trace);

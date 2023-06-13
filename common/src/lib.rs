@@ -1,8 +1,6 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, io::{Read, Write}};
 
-use anyhow::anyhow;
 use bytes::BytesMut;
-
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
@@ -69,6 +67,7 @@ impl<T, U> Default for HeteroCodec<T, U> {
     }
 }
 
+// TODO: u32, Big Endian
 impl<T, U> Encoder<T> for HeteroCodec<T, U>
 where
     T: Serialize,
@@ -77,7 +76,7 @@ where
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = bincode::serialize(&item)?;
-        self.inner.encode(bytes.into(), dst).map_err(|e| anyhow!(e))
+        self.inner.encode(bytes.into(), dst).map_err(anyhow::Error::new)
     }
 }
 
@@ -91,7 +90,7 @@ where
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.inner
             .decode(src)?
-            .map(|bytes| bincode::deserialize(&bytes).map_err(|e| anyhow!(e)))
+            .map(|bytes| bincode::deserialize(&bytes).map_err(anyhow::Error::new))
             .transpose()
     }
 }
@@ -99,3 +98,68 @@ where
 pub type ClientCodec = HeteroCodec<ClientMessage, ServerMessage>;
 
 pub type ServerCodec = HeteroCodec<ServerMessage, ClientMessage>;
+
+pub struct HeteroSyncCodec<T, U> {
+    _t: PhantomData<T>,
+    _u: PhantomData<U>,
+}
+
+impl<T, U> Default for HeteroSyncCodec<T, U> {
+    fn default() -> Self {
+        Self {
+            _t: PhantomData::<_>,
+            _u: PhantomData::<_>,
+        }
+    }
+}
+
+impl<T, U> HeteroSyncCodec<T, U>
+where
+    T: Serialize,
+    U: DeserializeOwned,
+{
+    pub fn write<W: Write>(&self, item: &T, dst: &mut W) -> anyhow::Result<()> {
+        let bytes = bincode::serialize(item)?;
+        dst.write_all(&(bytes.len() as u32).to_be_bytes())?;
+        dst.write_all(&bytes).map_err(anyhow::Error::new)
+    }
+
+    pub fn read<R: Read>(&self, src: &mut R) -> anyhow::Result<U> {
+        let mut len_buf = [0_u8; 4];
+        src.read_exact(&mut len_buf)?;
+        let len = u32::from_be_bytes(len_buf) as usize;
+        let mut buf = vec![0_u8; len];
+        src.read_exact(&mut buf)?;
+        bincode::deserialize(&buf).map_err(anyhow::Error::new)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use futures::SinkExt;
+    use tokio_util::codec::FramedWrite;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn async_write_sync_read() -> anyhow::Result<()> {
+        let sender = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = sender.local_addr()?.port();
+
+        let handle = std::thread::spawn(move || {
+            let mut reader = std::net::TcpStream::connect(format!("127.0.0.1:{}", port))?;
+            let codec = HeteroSyncCodec::<ClientMessage, ServerMessage>::default();
+            let msg = codec.read(&mut reader)?;
+            anyhow::Result::<ServerMessage>::Ok(msg)
+        });
+
+        let (stream, _) = sender.accept().await?;
+        let mut write = FramedWrite::new(stream, ServerCodec::default());
+        write.send(ServerMessage::CommandFinished { is_success: true, result: Some("Foo".into()) }).await?;
+
+        let msg = handle.join().unwrap()?;
+        assert!(matches!(msg, ServerMessage::CommandFinished { is_success, result } if is_success && result == Some("Foo".into())));
+
+        Ok(())
+    }
+}
