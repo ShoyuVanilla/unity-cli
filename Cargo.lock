@@ -201,6 +201,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "bytes",
+ "common",
  "futures",
  "serde",
  "tokio",
@@ -541,7 +542,7 @@ dependencies = [
 [[package]]
 name = "mdns-sd"
 version = "0.7.3"
-source = "git+https://github.com/ShoyuVanilla/mdns-sd.git?branch=main#e3be0c744e3918eb913f6f7bbe76703d302e6fe3"
+source = "git+https://github.com/ShoyuVanilla/mdns-sd.git?rev=e3be0c744e3918eb913f6f7bbe76703d302e6fe3#e3be0c744e3918eb913f6f7bbe76703d302e6fe3"
 dependencies = [
  "flume",
  "if-addrs",
@@ -1100,8 +1101,6 @@ dependencies = [
  "common",
  "crossterm",
  "mdns-sd",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -1109,7 +1108,6 @@ name = "ucli-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bytes",
  "common",
  "dashmap",
  "futures",

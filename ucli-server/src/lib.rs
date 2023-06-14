@@ -366,7 +366,10 @@ pub extern "C" fn on_command_finish(
         };
         let _ = instance.unity_msg_send.send((
             Uuid::from_u64_pair(uuid_hi, uuid_lo),
-            ServerMessage::CommandFinished { is_success, result },
+            ServerMessage::CommandFinished {
+                is_success,
+                msg: result,
+            },
         ));
     }
 }

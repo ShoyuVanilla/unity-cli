@@ -8,11 +8,11 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 anyhow = "1"
-common = { path = "../common" }
+common = { path = "../common", features = ["async"] }
 dashmap = "5.4"
 futures = "0.3"
 gethostname = "0.4"
-mdns-sd = { git = "https://github.com/ShoyuVanilla/mdns-sd.git", branch = "main" }
+mdns-sd = { git = "https://github.com/ShoyuVanilla/mdns-sd.git", rev = "e3be0c744e3918eb913f6f7bbe76703d302e6fe3" }
 names = "0.14"
 once_cell = "1.17"
 parking_lot = "0.12"
@@ -25,4 +25,4 @@ tracing-subscriber = { version = "0.3", features = ["tracing-log", "time", "smal
 uuid = { version = "1.3", features = ["v4", "fast-rng"] }
 
 [dev-dependencies]
-bytes = "1"
+common = { path = "../common", features = ["async", "sync"] }

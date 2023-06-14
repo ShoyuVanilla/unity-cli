@@ -112,7 +112,7 @@ fn parse_discovery_args(matches: &ArgMatches) -> DiscoveryArgs {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::{path::PathBuf, time::Duration};
 
     use crate::cli_args::{cli, parse_args, CliArgs, DiscoveryArgs};

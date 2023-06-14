@@ -1,15 +1,18 @@
 use std::{
     net::SocketAddrV4,
-    path::{PathBuf, Path},
-    time::{Duration, Instant}, str::FromStr,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::{Duration, Instant},
 };
 
-use common::{MDNS_SERVICE_NAME, PROJECT_PATH_PROP_KEY, PROJECT_NAME_PROP_KEY, UNITY_VERSION_PROP_KEY};
+use common::{
+    MDNS_SERVICE_NAME, PROJECT_NAME_PROP_KEY, PROJECT_PATH_PROP_KEY, UNITY_VERSION_PROP_KEY,
+};
 use mdns_sd::{IPMulticastTTLOption, ServiceDaemon, ServiceEvent, ServiceInfo};
 
 use crate::cli_args::DiscoveryArgs;
 
-pub struct Service {
+pub struct UnityService {
     address: SocketAddrV4,
     hostname: String,
     path: PathBuf,
@@ -18,7 +21,7 @@ pub struct Service {
     session_name: String,
 }
 
-pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<Service> {
+pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityService> {
     let daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).unwrap();
     let receiver = daemon.browse(MDNS_SERVICE_NAME).unwrap();
     let mut services = Vec::new();
@@ -41,7 +44,11 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<Service> {
     services
 }
 
-fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs, workdir: &Path) -> Option<(bool, Service)> {
+fn filter_service(
+    info: &ServiceInfo,
+    args: &DiscoveryArgs,
+    workdir: &Path,
+) -> Option<(bool, UnityService)> {
     let address = if let Some(ip) = info.get_addresses().iter().next() {
         SocketAddrV4::new(ip.to_owned(), info.get_port())
     } else {
@@ -64,15 +71,16 @@ fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs, workdir: &Path) -> O
         return None;
     };
 
-    let unity_version = if let Some(unity_version) = info.get_property_val_str(UNITY_VERSION_PROP_KEY) {
-        unity_version.to_owned()
-    } else {
-        return None;
-    };
+    let unity_version =
+        if let Some(unity_version) = info.get_property_val_str(UNITY_VERSION_PROP_KEY) {
+            unity_version.to_owned()
+        } else {
+            return None;
+        };
 
     let session_name = info.get_fullname().replace(MDNS_SERVICE_NAME, "");
 
-    let service = Service {
+    let service = UnityService {
         address,
         hostname: info.get_hostname().to_owned(),
         path,
@@ -82,7 +90,10 @@ fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs, workdir: &Path) -> O
     };
 
     if let Some(ref path_arg) = args.path {
-        if let (Ok(path_arg), Ok(path)) = (std::fs::canonicalize(path_arg), std::fs::canonicalize(&service.path)) {
+        if let (Ok(path_arg), Ok(path)) = (
+            std::fs::canonicalize(path_arg),
+            std::fs::canonicalize(&service.path),
+        ) {
             if path_arg == path {
                 return Some((true, service));
             } else {
@@ -108,7 +119,10 @@ fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs, workdir: &Path) -> O
     }
 
     if args.path.is_none() && args.project.is_none() && args.session.is_none() {
-        if let (Ok(workdir), Ok(path)) = (std::fs::canonicalize(workdir), std::fs::canonicalize(&service.path)) {
+        if let (Ok(workdir), Ok(path)) = (
+            std::fs::canonicalize(workdir),
+            std::fs::canonicalize(&service.path),
+        ) {
             if workdir == path {
                 return Some((true, service));
             } else {

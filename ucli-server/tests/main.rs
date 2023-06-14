@@ -1,19 +1,16 @@
 use std::{
     ffi::{c_char, CStr, CString},
-    io::{Read, Write},
     net::TcpStream,
     sync::Arc,
     time::Duration,
 };
 
-use bytes::BytesMut;
 use common::{
-    ClientCodec, ClientMessage, ServerMessage, PROJECT_NAME_PROP_KEY,
-    PROJECT_PATH_PROP_KEY, UNITY_VERSION_PROP_KEY,
+    ClientCodec, ClientMessage, ServerMessage, PROJECT_NAME_PROP_KEY, PROJECT_PATH_PROP_KEY,
+    UNITY_VERSION_PROP_KEY,
 };
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use parking_lot::{Condvar, Mutex};
-use tokio_util::codec::{Decoder, Encoder};
 
 type Command = (u64, u64, String, Vec<String>);
 
@@ -129,9 +126,7 @@ fn general_use_case() {
         cmd: "foo".to_string(),
         args: vec!["bar".to_string(), "baz".to_string()],
     };
-    let mut bytes = BytesMut::new();
-    ClientCodec::default().encode(msg, &mut bytes).unwrap();
-    conn_a.write_all(&bytes).unwrap();
+    ClientCodec::default().write(&msg, &mut conn_a).unwrap();
 
     std::thread::sleep(Duration::from_millis(100));
 
@@ -150,22 +145,13 @@ fn general_use_case() {
 
     std::thread::sleep(Duration::from_millis(100));
 
-    let mut buf = vec![0; 1024];
-    let mut bytes = BytesMut::new();
-    loop {
-        let len = conn_a.read(&mut buf).unwrap();
-        if len == 0 {
-            break;
-        }
-        bytes.extend_from_slice(&buf[..len])
-    }
-    let msg = ClientCodec::default().decode(&mut bytes);
+    let msg = ClientCodec::default().read(&mut conn_a);
     match msg {
-        Ok(Some(ServerMessage::UnityConsoleOutput {
+        Ok(ServerMessage::UnityConsoleOutput {
             log_type: _,
             log,
             stack_trace,
-        })) => {
+        }) => {
             assert_eq!((log.as_str(), stack_trace.as_str()), (log_a, st_a.as_ref()));
         }
         _ => {
