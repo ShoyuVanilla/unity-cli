@@ -21,6 +21,7 @@ pub struct UnityService {
     session_name: String,
 }
 
+// TODO: Remove workdir
 pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityService> {
     let daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).unwrap();
     let receiver = daemon.browse(MDNS_SERVICE_NAME).unwrap();
@@ -44,6 +45,7 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityServi
     services
 }
 
+// TODO: Remove workdir
 fn filter_service(
     info: &ServiceInfo,
     args: &DiscoveryArgs,

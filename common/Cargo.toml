@@ -6,12 +6,12 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 bincode = "1.3"
-bytes = "1"
+bytes = { version = "1", optional = true }
 serde = { version = "1", features = ["derive"] }
 tokio-util = { version = "0.7", features = ["codec"], optional = true }
 
 [features]
-async = ["dep:tokio-util"]
+async = ["dep:bytes", "dep:tokio-util"]
 sync = []
 
 [dev-dependencies]

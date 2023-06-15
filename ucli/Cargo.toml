@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }
 common = { path = "../common", features = ["sync"] }
+crossbeam = "0.8"
 crossterm = "0.26"
 mdns-sd = { git = "https://github.com/ShoyuVanilla/mdns-sd.git", rev = "e3be0c744e3918eb913f6f7bbe76703d302e6fe3" }

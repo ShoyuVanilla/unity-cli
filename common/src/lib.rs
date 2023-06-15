@@ -3,8 +3,10 @@ use std::{
     marker::PhantomData,
 };
 
-use bytes::BytesMut;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+#[cfg(feature = "async")]
+use bytes::BytesMut;
 
 #[cfg(feature = "async")]
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};

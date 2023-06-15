@@ -64,7 +64,7 @@ fn cli() -> Command {
 
 fn session_discovery_args() -> Vec<clap::Arg> {
     vec![
-        arg!(--path[PATH])
+        arg!(--path[DIR])
             .value_hint(ValueHint::DirPath)
             .value_parser(clap::value_parser!(PathBuf)),
         arg!(--project[NAME]),
@@ -102,7 +102,9 @@ fn parse_args(matches: &ArgMatches) -> CliArgs {
 
 fn parse_discovery_args(matches: &ArgMatches) -> DiscoveryArgs {
     DiscoveryArgs {
-        path: matches.get_one::<PathBuf>("path").map(PathBuf::to_owned),
+        path: matches
+            .get_one::<PathBuf>("path")
+            .map_or_else(|| std::env::current_dir().ok(), |p| Some(p.to_owned())),
         project: matches.get_one::<String>("project").map(String::to_owned),
         session: matches.get_one::<String>("session").map(String::to_owned),
         discovery_timeout: matches
@@ -119,8 +121,7 @@ mod tests {
 
     #[test]
     fn parse_list_sessions_subcommand() {
-        let matches =
-            cli().get_matches_from(vec!["ucli", "list-sessions", "--path", "foo/bar/baz"]);
+        let matches = cli().get_matches_from(vec!["ucli", "list-sessions", "--path=foo/bar/baz"]);
         let parsed = parse_args(&matches);
 
         assert_eq!(
