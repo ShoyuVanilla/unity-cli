@@ -46,12 +46,20 @@ impl From<i32> for UnityLogType {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum ServerMessage {
-    IsBusy,
     UnityConsoleOutput {
         log_type: UnityLogType,
         log: String,
         stack_trace: String,
     },
+    CompilationStarted,
+    Compiling,
+    CompilationFinished {
+
+    },
+    AssemblyUnloaded,
+    AssemblyReloading,
+    AssemblyReloaded,
+    IsBusy,
     CommandFinished {
         is_success: bool,
         msg: Option<String>,
