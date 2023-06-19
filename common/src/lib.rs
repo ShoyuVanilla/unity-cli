@@ -53,9 +53,7 @@ pub enum ServerMessage {
     },
     CompilationStarted,
     Compiling,
-    CompilationFinished {
-
-    },
+    CompilationFinished {},
     AssemblyUnloaded,
     AssemblyReloading,
     AssemblyReloaded,

@@ -2,14 +2,13 @@ use std::{
     ffi::{CStr, CString},
     net::SocketAddr,
     os::raw::c_char,
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use dashmap::DashMap;
 use futures::{SinkExt, StreamExt};
 use gethostname::gethostname;
 use mdns_sd::{IPMulticastTTLOption, ServiceDaemon, ServiceInfo};
-use once_cell::sync::Lazy;
 use socket2::{Domain, Socket, Type};
 use tokio::{
     net::{
@@ -33,7 +32,11 @@ struct Instance {
     unity_msg_send: tokio::sync::mpsc::UnboundedSender<(Uuid, ServerMessage)>,
 }
 
-static INSTANCE: Lazy<RwLock<Option<Instance>>> = Lazy::new(|| RwLock::new(None));
+static INSTANCE: OnceLock<RwLock<Option<Instance>>> = OnceLock::new();
+
+fn instance() -> &'static RwLock<Option<Instance>> {
+    INSTANCE.get_or_init(|| RwLock::new(None))
+}
 
 type UnityCommandCallback = extern "C" fn(u64, u64, *const c_char, *const *const c_char, i32);
 
@@ -41,8 +44,13 @@ struct UnityState {
     cmd_cb: UnityCommandCallback,
 }
 
-static UNITY_STATE: Lazy<RwLock<Option<UnityState>>> = Lazy::new(|| RwLock::new(None));
+static UNITY_STATE: OnceLock<RwLock<Option<UnityState>>> = OnceLock::new();
 
+fn unity_state() -> &'static RwLock<Option<UnityState>> {
+    UNITY_STATE.get_or_init(|| RwLock::new(None))
+}
+
+#[inline(always)]
 fn c_char_to_str(ptr: *const c_char) -> String {
     unsafe {
         let s = CStr::from_ptr(ptr);
@@ -57,7 +65,7 @@ pub extern "C" fn run(
     unity_version: *const c_char,
     command_callback: UnityCommandCallback,
 ) {
-    *UNITY_STATE.blocking_write() = Some(UnityState {
+    *unity_state().blocking_write() = Some(UnityState {
         cmd_cb: command_callback,
     });
 
@@ -65,7 +73,7 @@ pub extern "C" fn run(
     let (unity_msg_tx, mut unity_msg_rx) = tokio::sync::mpsc::unbounded_channel();
 
     {
-        let mut instance = INSTANCE.blocking_write();
+        let mut instance = instance().blocking_write();
         if instance.is_some() {
             return;
         } else {
@@ -93,8 +101,8 @@ pub extern "C" fn run(
 
         impl Drop for GlobalStatesGuard {
             fn drop(&mut self) {
-                *INSTANCE.blocking_write() = None;
-                *UNITY_STATE.blocking_write() = None;
+                *instance().blocking_write() = None;
+                *unity_state().blocking_write() = None;
             }
         }
 
@@ -199,7 +207,7 @@ pub extern "C" fn run(
                 loop {
                     match cmd_rx.recv().await {
                         Some((uuid, cmd, args)) => {
-                            if let Some(unity_state) = UNITY_STATE.read().await.as_ref() {
+                            if let Some(unity_state) = unity_state().read().await.as_ref() {
                                 let (uuid_hi, uuid_lo) = uuid.as_u64_pair();
                                 let cmd = CString::new(cmd).unwrap().into_raw();
                                 let args: Vec<_> = args
@@ -316,14 +324,14 @@ async fn handle_write<F>(
 
 #[no_mangle]
 pub extern "C" fn stop() {
-    if let Some(ref mut instance) = INSTANCE.blocking_write().as_mut() {
+    if let Some(ref mut instance) = instance().blocking_write().as_mut() {
         let _ = instance.stop_tx.blocking_send(());
     }
 }
 
 #[no_mangle]
 pub extern "C" fn is_running() -> bool {
-    INSTANCE.blocking_read().is_some()
+    instance().blocking_read().is_some()
 }
 
 #[no_mangle]
@@ -334,7 +342,7 @@ pub unsafe extern "C" fn on_unity_console_log(
     log: *const c_char,
     stack_trace: *const c_char,
 ) -> bool {
-    if let Some(instance) = INSTANCE.blocking_read().as_ref() {
+    if let Some(instance) = instance().blocking_read().as_ref() {
         let log = c_char_to_str(log);
         let stack_trace = c_char_to_str(stack_trace);
         let msg = ServerMessage::UnityConsoleOutput {
@@ -358,7 +366,7 @@ pub extern "C" fn on_command_finish(
     is_success: bool,
     result: *const c_char,
 ) {
-    if let Some(instance) = INSTANCE.blocking_read().as_ref() {
+    if let Some(instance) = instance().blocking_read().as_ref() {
         let result = if result.is_null() {
             None
         } else {
@@ -376,5 +384,5 @@ pub extern "C" fn on_command_finish(
 
 #[no_mangle]
 pub extern "C" fn on_csharp_assembly_unload() {
-    *UNITY_STATE.blocking_write() = None;
+    *unity_state().blocking_write() = None;
 }

@@ -14,7 +14,6 @@ futures = "0.3"
 gethostname = "0.4"
 mdns-sd = { git = "https://github.com/ShoyuVanilla/mdns-sd.git", rev = "e3be0c744e3918eb913f6f7bbe76703d302e6fe3" }
 names = "0.14"
-once_cell = "1.17"
 parking_lot = "0.12"
 socket2 = "0.5"
 tokio = { version = "1.28", features = ["full"] }

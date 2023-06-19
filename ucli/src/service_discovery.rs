@@ -1,6 +1,6 @@
 use std::{
     net::SocketAddrV4,
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -21,8 +21,7 @@ pub struct UnityService {
     session_name: String,
 }
 
-// TODO: Remove workdir
-pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityService> {
+pub fn discover_service(args: DiscoveryArgs) -> Vec<UnityService> {
     let daemon = ServiceDaemon::new(IPMulticastTTLOption::LinkLocal).unwrap();
     let receiver = daemon.browse(MDNS_SERVICE_NAME).unwrap();
     let mut services = Vec::new();
@@ -30,7 +29,7 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityServi
     let deadline = Instant::now() + args.discovery_timeout.unwrap_or(Duration::from_millis(100));
     while let Ok(event) = receiver.recv_deadline(deadline) {
         if let ServiceEvent::ServiceResolved(info) = event {
-            match filter_service(&info, &args, &workdir) {
+            match filter_service(&info, &args) {
                 Some((true, service)) => {
                     return vec![service];
                 }
@@ -45,12 +44,7 @@ pub fn discover_service(args: DiscoveryArgs, workdir: PathBuf) -> Vec<UnityServi
     services
 }
 
-// TODO: Remove workdir
-fn filter_service(
-    info: &ServiceInfo,
-    args: &DiscoveryArgs,
-    workdir: &Path,
-) -> Option<(bool, UnityService)> {
+fn filter_service(info: &ServiceInfo, args: &DiscoveryArgs) -> Option<(bool, UnityService)> {
     let address = if let Some(ip) = info.get_addresses().iter().next() {
         SocketAddrV4::new(ip.to_owned(), info.get_port())
     } else {
@@ -117,19 +111,6 @@ fn filter_service(
             return None;
         } else {
             return Some((&service.session_name == session_arg, service));
-        }
-    }
-
-    if args.path.is_none() && args.project.is_none() && args.session.is_none() {
-        if let (Ok(workdir), Ok(path)) = (
-            std::fs::canonicalize(workdir),
-            std::fs::canonicalize(&service.path),
-        ) {
-            if workdir == path {
-                return Some((true, service));
-            } else {
-                return None;
-            }
         }
     }
 

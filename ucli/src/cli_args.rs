@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(
             CliArgs::Compile {
                 discovery_args: DiscoveryArgs {
-                    path: None,
+                    path: std::env::current_dir().ok(),
                     project: None,
                     session: None,
                     discovery_timeout: None,
@@ -181,7 +181,7 @@ mod tests {
                     .map(|s| s.to_string())
                     .collect(),
                 discovery_args: DiscoveryArgs {
-                    path: None,
+                    path: std::env::current_dir().ok(),
                     project: None,
                     session: Some(String::from("foo-bar")),
                     discovery_timeout: Some(Duration::from_millis(500)),
@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(
             CliArgs::ListCommands {
                 discovery_args: DiscoveryArgs {
-                    path: None,
+                    path: std::env::current_dir().ok(),
                     project: Some(String::from("My Unity Project")),
                     session: None,
                     discovery_timeout: None,
